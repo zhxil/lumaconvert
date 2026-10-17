@@ -1,0 +1,251 @@
+<Window x:Class="LightConvert.WinUI.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:LightConvert.WinUI" Title="轻转">
+  <Grid x:Name="Root" Background="#F5F7FA" RequestedTheme="Light" UseLayoutRounding="True" AllowDrop="True" DragOver="OnDragOver" Drop="OnDrop">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="48" />
+      <RowDefinition Height="36" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="86" />
+    </Grid.RowDefinitions>
+    <Grid x:Name="TitleBar" Padding="20,0,140,0">
+      <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
+        <Image Source="Assets/LightConvert.png" Width="24" Height="24" />
+        <TextBlock Text="轻转" FontSize="14" FontWeight="SemiBold" />
+      </StackPanel>
+    </Grid>
+    <MenuBar Grid.Row="1" Background="Transparent" Margin="8,0">
+      <MenuBarItem Title="文件">
+        <MenuFlyoutItem x:Name="MenuAddFiles" Text="添加文件…" Click="AddFiles_Click">
+          <MenuFlyoutItem.KeyboardAccelerators>
+            <KeyboardAccelerator Key="O" Modifiers="Control" />
+          </MenuFlyoutItem.KeyboardAccelerators>
+        </MenuFlyoutItem>
+        <MenuFlyoutItem x:Name="MenuAddFolder" Text="添加文件夹…" Click="AddFolder_Click">
+          <MenuFlyoutItem.KeyboardAccelerators>
+            <KeyboardAccelerator Key="O" Modifiers="Control,Shift" />
+          </MenuFlyoutItem.KeyboardAccelerators>
+        </MenuFlyoutItem>
+        <MenuFlyoutSeparator />
+        <MenuFlyoutItem Text="打开输出目录" Click="OpenFolder_Click" />
+        <MenuFlyoutSeparator />
+        <MenuFlyoutItem Text="退出" Click="Exit_Click" />
+      </MenuBarItem>
+      <MenuBarItem Title="任务">
+        <MenuFlyoutItem x:Name="MenuRemove" Text="移除选中项" Click="Remove_Click" />
+        <MenuFlyoutItem x:Name="MenuRemoveCompleted" Text="移除已完成项" Click="RemoveCompleted_Click" />
+        <MenuFlyoutItem x:Name="MenuRetry" Text="重试失败项" Click="RetryFailed_Click" />
+        <MenuFlyoutSeparator />
+        <MenuFlyoutItem x:Name="MenuClear" Text="清空队列" Click="Clear_Click" />
+      </MenuBarItem>
+      <MenuBarItem Title="帮助">
+        <MenuFlyoutItem Text="使用说明" Click="Help_Click">
+          <MenuFlyoutItem.KeyboardAccelerators>
+            <KeyboardAccelerator Key="F1" />
+          </MenuFlyoutItem.KeyboardAccelerators>
+        </MenuFlyoutItem>
+        <MenuFlyoutItem Text="关于轻转" Click="About_Click" />
+      </MenuBarItem>
+    </MenuBar>
+    <NavigationView x:Name="Navigation" Grid.Row="2" PaneDisplayMode="Left" IsPaneOpen="True" IsPaneToggleButtonVisible="False" OpenPaneLength="172" CompactPaneLength="48" IsBackButtonVisible="Collapsed" IsSettingsVisible="True" SelectionChanged="Navigation_SelectionChanged" AlwaysShowHeader="False" IsTitleBarAutoPaddingEnabled="False">
+      <NavigationView.MenuItems>
+        <NavigationViewItem x:Name="ConvertNav" Content="转换" Tag="convert">
+          <NavigationViewItem.Icon>
+            <SymbolIcon Symbol="Switch" />
+          </NavigationViewItem.Icon>
+        </NavigationViewItem>
+      </NavigationView.MenuItems>
+      <Grid>
+        <Grid x:Name="ConversionPage" Margin="20,8,24,20" ColumnSpacing="20">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="288" />
+          </Grid.ColumnDefinitions>
+          <Grid RowSpacing="14">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="Auto" />
+              <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="1">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button x:Name="AddFilesButton" Content="＋ 添加文件" Click="AddFiles_Click" />
+                <Button x:Name="AddFolderButton" Content="添加文件夹" Click="AddFolder_Click" />
+              </StackPanel>
+              <Button x:Name="QueueActionsButton" HorizontalAlignment="Right" AutomationProperties.Name="队列操作">
+                <FontIcon Glyph="" FontSize="18" />
+                <Button.Flyout>
+                  <MenuFlyout>
+                    <MenuFlyoutItem Text="移除选中项" Click="Remove_Click" />
+                    <MenuFlyoutItem Text="移除已完成项" Click="RemoveCompleted_Click" />
+                    <MenuFlyoutItem Text="重试失败项" Click="RetryFailed_Click" />
+                    <MenuFlyoutSeparator />
+                    <MenuFlyoutItem Text="清空队列" Click="Clear_Click" />
+                  </MenuFlyout>
+                </Button.Flyout>
+              </Button>
+            </Grid>
+            <TextBlock x:Name="CountText" Grid.Row="2" Text="队列为空" FontSize="13" Foreground="{StaticResource QuietBrush}" />
+            <Border x:Name="DropSurface" Grid.Row="3" Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource StrokeBrush}" BorderThickness="1" CornerRadius="16" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
+              <Grid>
+                <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                  <Border Width="64" Height="64" Background="#EDF3FF" CornerRadius="22" HorizontalAlignment="Center">
+                    <FontIcon Glyph="" FontSize="30" Foreground="{StaticResource BrandBrush}" />
+                  </Border>
+                  <TextBlock Text="拖入文件" FontSize="21" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                </StackPanel>
+                <ListView x:Name="FileList" ContainerContentChanging="FileList_ContainerContentChanging" Visibility="Collapsed" SelectionMode="Single" ScrollViewer.VerticalScrollMode="Enabled" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollMode="Disabled" SelectionChanged="FileList_SelectionChanged" Padding="8" Background="Transparent" AutomationProperties.AutomationId="FileQueue">
+                  <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                      <Setter Property="Padding" Value="8" />
+                      <Setter Property="Margin" Value="0,2" />
+                    </Style>
+                  </ListView.ItemContainerStyle>
+                  <ListView.ItemTemplate>
+                    <DataTemplate x:DataType="local:QueueItem">
+                      <Grid ColumnSpacing="14" Padding="0,6">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="72" />
+                          <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Height="72" Background="#EDF0F5" CornerRadius="10">
+                          <Grid>
+                            <FontIcon Glyph="{x:Bind KindGlyph}" Foreground="#8F9BB0" FontSize="24" />
+                            <Image Source="{x:Bind Thumbnail, Mode=OneWay}" Stretch="UniformToFill" AutomationProperties.Name="文件缩略图" />
+                          </Grid>
+                        </Border>
+                        <Grid Grid.Column="1" RowSpacing="5">
+                          <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                          </Grid.RowDefinitions>
+                          <TextBlock Text="{x:Bind Name}" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind Source}" />
+                          <TextBlock Grid.Row="1" Text="{x:Bind Description}" FontSize="12" Foreground="{StaticResource QuietBrush}" />
+                          <ProgressBar Grid.Row="2" Value="{x:Bind Percent, Mode=OneWay}" Maximum="100" Height="3" Foreground="{StaticResource BrandBrush}" Background="#EDF0F5" />
+                          <Grid Grid.Row="3">
+                            <TextBlock Text="{x:Bind Status, Mode=OneWay}" FontSize="12" Foreground="{StaticResource QuietBrush}" />
+                            <TextBlock Text="{x:Bind Result, Mode=OneWay}" FontSize="12" HorizontalAlignment="Right" Foreground="{StaticResource BrandBrush}" />
+                          </Grid>
+                        </Grid>
+                      </Grid>
+                    </DataTemplate>
+                  </ListView.ItemTemplate>
+                </ListView>
+              </Grid>
+            </Border>
+          </Grid>
+          <Border Grid.Column="1" Background="White" CornerRadius="12" BorderBrush="{StaticResource StrokeBrush}" BorderThickness="1">
+            <ScrollViewer x:Name="PreviewScroll" VerticalScrollMode="Enabled" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" ZoomMode="Disabled">
+              <StackPanel Padding="16" Spacing="16">
+                <Grid>
+                  <TextBlock x:Name="PreviewKind" Text="未选择文件" FontSize="12" Foreground="{StaticResource QuietBrush}" HorizontalAlignment="Right" Visibility="Collapsed" />
+                </Grid>
+                <Border Height="180" Background="#EEF2F7" CornerRadius="8">
+                  <Grid>
+                    <StackPanel x:Name="PreviewPlaceholder" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                      <FontIcon Glyph="" FontSize="28" Foreground="#75839A" />
+                      <TextBlock x:Name="PreviewHint" Text="选择文件查看预览" FontSize="13" Foreground="{StaticResource QuietBrush}" />
+                    </StackPanel>
+                    <Image x:Name="SelectedPreview" Stretch="Uniform" />
+                  </Grid>
+                </Border>
+                <TextBlock x:Name="PreviewName" Text="视频预览为首帧" FontSize="13" TextTrimming="CharacterEllipsis" Foreground="{StaticResource QuietBrush}" Visibility="Collapsed" />
+                <InfoBar x:Name="SelectedErrorBar" IsOpen="False" IsClosable="False" Severity="Error" Title="转换失败" />
+                <Border Height="1" Background="{StaticResource StrokeBrush}" />
+                <StackPanel Spacing="8">
+                  <TextBlock Text="压缩" FontWeight="SemiBold" />
+                  <ComboBox x:Name="SessionPresetBox" SelectedIndex="1" HorizontalAlignment="Stretch" SelectionChanged="SessionPreset_Changed" AutomationProperties.Name="压缩方式">
+                    <ComboBoxItem Content="清晰优先" />
+                    <ComboBoxItem Content="均衡压缩" />
+                    <ComboBoxItem Content="体积优先" />
+                  </ComboBox>
+                  <TextBlock x:Name="PresetHint" FontSize="12" TextWrapping="Wrap" Foreground="{StaticResource QuietBrush}" Visibility="Collapsed" />
+                </StackPanel>
+                <StackPanel Spacing="6">
+                  <TextBlock Text="输出目录" FontWeight="SemiBold" />
+                  <TextBlock x:Name="OutputSummary" FontSize="12" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" Foreground="{StaticResource QuietBrush}" />
+                  <HyperlinkButton Content="更改…" Click="ShowSettings_Click" Padding="0" />
+                </StackPanel>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+        <ScrollViewer VerticalScrollMode="Enabled" VerticalScrollBarVisibility="Auto" HorizontalScrollMode="Disabled" HorizontalScrollBarVisibility="Disabled" ZoomMode="Disabled" x:Name="SettingsPage" Visibility="Collapsed" Padding="28,8,28,28" HorizontalContentAlignment="Stretch" SizeChanged="SettingsPage_SizeChanged">
+          <StackPanel x:Name="SettingsContent" MaxWidth="820" HorizontalAlignment="Left" Spacing="20">
+            <StackPanel Spacing="4">
+              <TextBlock Text="设置" FontSize="28" FontWeight="SemiBold" />
+            </StackPanel>
+            <StackPanel x:Name="SettingsBody" Spacing="16">
+              <Border Background="White" CornerRadius="12" Padding="20" BorderBrush="{StaticResource StrokeBrush}" BorderThickness="1">
+                <StackPanel Spacing="14">
+                  <TextBlock Text="输出" FontSize="18" FontWeight="SemiBold" />
+                  <TextBlock Text="保存位置" FontWeight="SemiBold" />
+                  <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="OutputBox" MinWidth="300" TextChanged="OutputBox_TextChanged" AutomationProperties.Name="默认输出目录" />
+                    <Button x:Name="ChooseFolderButton" Grid.Column="1" Content="浏览…" Click="ChooseFolder_Click" />
+                  </Grid>
+                  <ToggleSwitch x:Name="AutoOpenToggle" Header="完成后打开目录" Toggled="Setting_Toggled" OnContent="" OffContent="" />
+                </StackPanel>
+              </Border>
+              <Border Background="White" CornerRadius="12" Padding="20" BorderBrush="{StaticResource StrokeBrush}" BorderThickness="1">
+                <StackPanel Spacing="14">
+                  <TextBlock Text="转换偏好" FontSize="18" FontWeight="SemiBold" />
+                  <Grid ColumnSpacing="28">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="*" />
+                      <ColumnDefinition Width="220" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Spacing="4">
+                      <TextBlock Text="默认压缩" FontWeight="SemiBold" />
+                    </StackPanel>
+                    <ComboBox x:Name="DefaultPresetBox" Grid.Column="1" SelectedIndex="1" HorizontalAlignment="Stretch" SelectionChanged="DefaultPreset_Changed">
+                      <ComboBoxItem Content="清晰优先" />
+                      <ComboBoxItem Content="均衡压缩" />
+                      <ComboBoxItem Content="体积优先" />
+                    </ComboBox>
+                  </Grid>
+                  <ToggleSwitch x:Name="RecursiveToggle" Header="包含子文件夹" IsOn="True" Toggled="Setting_Toggled" OnContent="" OffContent="" />
+                  <ToggleSwitch x:Name="ThumbnailsToggle" Header="显示缩略图" IsOn="True" Toggled="Setting_Toggled" OnContent="" OffContent="" />
+                  <ToggleSwitch x:Name="ConfirmCloseToggle" Header="转换中退出需确认" IsOn="True" Toggled="Setting_Toggled" OnContent="" OffContent="" />
+                </StackPanel>
+              </Border>
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="恢复默认" Click="ResetSettings_Click" />
+                <Button Content="关于轻转" Click="About_Click" />
+              </StackPanel>
+            </StackPanel>
+            <InfoBar x:Name="SettingsNotice" IsClosable="False" IsOpen="False" Severity="Warning" />
+          </StackPanel>
+        </ScrollViewer>
+      </Grid>
+    </NavigationView>
+    <Border x:Name="TaskFooter" Grid.Row="3" Background="White" BorderBrush="{StaticResource StrokeBrush}" BorderThickness="0,1,0,0" Padding="24,16">
+      <Grid ColumnSpacing="20">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="160" />
+        </Grid.ColumnDefinitions>
+        <StackPanel Spacing="8" VerticalAlignment="Center">
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="48" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="SummaryText" Text="添加文件后即可开始" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="TotalPercentText" Grid.Column="1" Text="0%" FontSize="13" HorizontalAlignment="Right" Foreground="{StaticResource QuietBrush}" />
+          </Grid>
+          <ProgressBar x:Name="TotalProgress" Height="4" Maximum="100" Foreground="{StaticResource BrandBrush}" />
+        </StackPanel>
+        <Button x:Name="CancelButton" Grid.Column="1" Content="取消转换" Click="Cancel_Click" IsEnabled="False" VerticalAlignment="Center" />
+        <Button x:Name="StartButton" Grid.Column="2" Content="开始转换" Click="Start_Click" Style="{StaticResource AccentButtonStyle}" HorizontalAlignment="Stretch" Height="42" VerticalAlignment="Center" AutomationProperties.AutomationId="StartConversion" />
+      </Grid>
+    </Border>
+  </Grid>
+</Window>
