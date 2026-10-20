@@ -1,4 +1,4 @@
-param([string]$DotnetPath = 'dotnet', [string]$FallbackPackages = '', [string]$ReleaseName = '轻转-v2.2.1-Windows-x64')
+param([string]$DotnetPath = 'dotnet', [string]$FallbackPackages = '', [string]$ReleaseName = '轻转-v2.3.0-Windows-x64')
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location $projectRoot

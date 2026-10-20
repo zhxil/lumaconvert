@@ -1,4 +1,4 @@
-param([string]$ReleaseName = '轻转-v2.2.1-Windows-x64')
+param([string]$ReleaseName = '轻转-v2.3.0-Windows-x64')
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
 $release=Join-Path $root (Join-Path 'dist' $ReleaseName)

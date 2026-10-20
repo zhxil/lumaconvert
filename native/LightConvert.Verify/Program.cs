@@ -77,6 +77,57 @@ try
 }
 catch (OperationCanceledException) { checks.Add("Cancel during actual FFmpeg conversion"); }
 var broken = Path.Combine(root, "broken.heic");
+var datedPhoto = Path.Combine(root, "dated-photo.jpg");
+using (var photo = new MagickImage(MagickColors.Coral, 180, 120))
+{
+    var exif = new ExifProfile();
+    exif.SetValue(ExifTag.DateTimeOriginal, "2021:05:06 12:34:56");
+    exif.SetValue(ExifTag.OffsetTimeOriginal, "+08:00");
+    exif.SetValue(ExifTag.SubsecTimeOriginal, "123");
+    exif.SetValue(ExifTag.Artist, "private metadata");
+    photo.SetProfile(exif); photo.Write(datedPhoto);
+}
+var datedOutput = await converter.ConvertAsync(datedPhoto, Path.Combine(root, "dates"), CompressionPreset.All[1]);
+using (var photo = new MagickImage(datedOutput.OutputPath))
+{
+    var exif = photo.GetExifProfile();
+    Require(exif?.GetValue(ExifTag.DateTimeOriginal)?.Value == "2021:05:06 12:34:56" &&
+        exif.GetValue(ExifTag.OffsetTimeOriginal)?.Value == "+08:00" && exif.GetValue(ExifTag.SubsecTimeOriginal)?.Value == "123", "Photo capture date, timezone and subsecond EXIF retained");
+    Require(exif?.GetValue(ExifTag.Artist) is null, "Unrelated private metadata removed");
+}
+Require(Math.Abs((File.GetCreationTimeUtc(datedOutput.OutputPath) - new DateTime(2021, 5, 6, 4, 34, 56, DateTimeKind.Utc)).TotalSeconds) < 1,
+    "Photo filesystem date respects EXIF timezone");
+var noDate = await converter.ConvertAsync(datedPhoto, Path.Combine(root, "dates-disabled"), CompressionPreset.All[1], preserveCaptureTime: false);
+using (var photo = new MagickImage(noDate.OutputPath)) Require(photo.GetExifProfile()?.GetValue(ExifTag.DateTimeOriginal) is null, "Capture date preservation can be disabled");
+var fallbackDate = new DateTime(2020, 2, 3, 4, 5, 6, DateTimeKind.Utc);
+File.SetLastWriteTimeUtc(heic, fallbackDate);
+var fallback = await converter.ConvertAsync(heic, Path.Combine(root, "date-fallback"), CompressionPreset.All[1]);
+Require(File.GetLastWriteTimeUtc(fallback.OutputPath) == fallbackDate, "Missing capture metadata falls back to source file time");
+var datedVideo = Path.Combine(root, "dated-video.mov");
+await FF("-v", "error", "-y", "-i", mov, "-c", "copy", "-metadata", "creation_time=2020-02-03T04:05:06Z", datedVideo);
+var datedMp4 = await converter.ConvertAsync(datedVideo, Path.Combine(root, "video-date"), CompressionPreset.All[1]);
+var stamp = (await converter.ProbeAsync(datedMp4.OutputPath)).CaptureTime;
+Require(DateTimeOffset.Parse(stamp).UtcDateTime == fallbackDate && File.GetLastWriteTimeUtc(datedMp4.OutputPath) == fallbackDate,
+    "Video capture metadata and file time retained");
+var undatedMp4 = await converter.ConvertAsync(datedVideo, Path.Combine(root, "video-date-disabled"), CompressionPreset.All[1], preserveCaptureTime: false);
+Require(string.IsNullOrEmpty((await converter.ProbeAsync(undatedMp4.OutputPath)).CaptureTime), "Disabling capture dates clears video global and stream timestamps");
+var outputRoot = Path.Combine(root, "structured");
+var album = Path.Combine(root, "相册");
+var nestedPhoto = Path.Combine(album, "旅行", "一.jpg");
+Require(OutputLayout.Folder(outputRoot, nestedPhoto, album, true) == Path.Combine(outputRoot, "相册", "旅行"), "Unicode imported root and nested folders preserved");
+Require(OutputLayout.Folder(outputRoot, nestedPhoto, album, false) == outputRoot && OutputLayout.Folder(outputRoot, nestedPhoto, null, true) == outputRoot,
+    "Flat output and individually added files supported");
+try { OutputLayout.Folder(outputRoot, Path.Combine(root, "outside.jpg"), album, true); throw new Exception("Path escaped"); }
+catch (InvalidDataException) { checks.Add("Source outside imported root rejected"); }
+var album2 = Path.Combine(root, "另一个相册");
+Require(OutputLayout.Folder(outputRoot, Path.Combine(album2, "旅行", "一.jpg"), album2, true) != OutputLayout.Folder(outputRoot, nestedPhoto, album, true), "Multiple imported roots remain separate");
+Directory.CreateDirectory(Path.GetDirectoryName(nestedPhoto)!);
+File.Copy(datedPhoto, nestedPhoto);
+var nestedOutput = await converter.ConvertAsync(nestedPhoto, OutputLayout.Folder(outputRoot, nestedPhoto, album, true), CompressionPreset.All[1]);
+Require(File.Exists(Path.Combine(outputRoot, "相册", "旅行", "一.jpg")) && nestedOutput.OutputPath != nestedPhoto, "Structured conversion writes a real nested output and retains source");
+var preview = await converter.CreateThumbnailAsync(datedPhoto, default, 1536);
+using (var photo = new MagickImage(preview)) Require(photo.Format == MagickFormat.Png, "Comparison image preview avoids lossy re-encoding");
+Require((await converter.CreateThumbnailAsync(datedMp4.OutputPath, default, 1536, 1.5)).Length > 100, "Comparison video supports selecting a later frame");
 File.WriteAllText(broken, "bad media");
 try { await converter.ConvertAsync(broken, Path.Combine(root, "broken-output"), CompressionPreset.All[1]); throw new Exception("Invalid input accepted"); }
 catch (Exception error) when (error is MagickException or InvalidDataException) { checks.Add("Corrupt input fails"); }

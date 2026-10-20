@@ -10,6 +10,8 @@ public sealed record AppSettings
     public bool ShowThumbnails { get; init; } = true;
     public bool OpenFolderOnComplete { get; init; }
     public bool ConfirmClose { get; init; } = true;
+    public bool PreserveCaptureTime { get; init; } = true;
+    public bool PreserveFolderStructure { get; init; } = true;
     public static AppSettings Load(string path)
     {
         if (!File.Exists(path)) return new();

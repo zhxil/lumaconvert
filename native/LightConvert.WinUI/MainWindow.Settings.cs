@@ -26,6 +26,8 @@ public sealed partial class MainWindow
         ThumbnailsToggle.IsOn = preferences.ShowThumbnails;
         AutoOpenToggle.IsOn = preferences.OpenFolderOnComplete;
         ConfirmCloseToggle.IsOn = preferences.ConfirmClose;
+        CaptureTimeToggle.IsOn = preferences.PreserveCaptureTime;
+        FolderStructureToggle.IsOn = preferences.PreserveFolderStructure;
         ready = wasReady;
         UpdateOutputSummary();
         UpdatePresetHint();
@@ -47,6 +49,20 @@ public sealed partial class MainWindow
         string folderName = Path.GetFileName(OutputBox.Text.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         OutputSummary.Text = string.IsNullOrEmpty(folderName) ? OutputBox.Text : folderName;
         ToolTipService.SetToolTip(OutputSummary, OutputBox.Text);
+        UpdateOutputStructure();
+    }
+    private void UpdateOutputStructure()
+    {
+        if (OutputStructureHint is null) return;
+        try
+        {
+            var item = FileList.SelectedItem as QueueItem;
+            var folder = item is null ? OutputBox.Text : LightConvert.Core.OutputLayout.Folder(OutputBox.Text, item.Source, item.ImportedFolder, preferences.PreserveFolderStructure);
+            OutputStructureHint.Text = item?.ImportedFolder is not null && preferences.PreserveFolderStructure
+                ? Path.GetRelativePath(OutputBox.Text, folder).Replace(Path.DirectorySeparatorChar, '／') : "";
+            ToolTipService.SetToolTip(OutputStructureHint, folder);
+        }
+        catch (Exception error) when (error is IOException or ArgumentException or NotSupportedException) { OutputStructureHint.Text = ""; }
     }
     private void OutputBox_TextChanged(object sender, TextChangedEventArgs e)
     {
@@ -73,7 +89,9 @@ public sealed partial class MainWindow
         if (!ready) return;
         bool changed = preferences.ShowThumbnails != ThumbnailsToggle.IsOn;
         preferences = preferences with { RecursiveFolders = RecursiveToggle.IsOn, ShowThumbnails = ThumbnailsToggle.IsOn,
-            OpenFolderOnComplete = AutoOpenToggle.IsOn, ConfirmClose = ConfirmCloseToggle.IsOn };
+            OpenFolderOnComplete = AutoOpenToggle.IsOn, ConfirmClose = ConfirmCloseToggle.IsOn,
+            PreserveCaptureTime = CaptureTimeToggle.IsOn, PreserveFolderStructure = FolderStructureToggle.IsOn };
+        UpdateOutputStructure();
         if (changed)
         {
             foreach (var item in items)
@@ -88,16 +106,20 @@ public sealed partial class MainWindow
     }
     private void Navigation_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
-        if (ready) NavigateTo(args.IsSettingsSelected);
+        if (ready) NavigateToPage(args.IsSettingsSelected ? "settings" : (args.SelectedItem as NavigationViewItem)?.Tag as string ?? "convert");
     }
-    private void NavigateTo(bool settings)
+    private void NavigateTo(bool settings) => NavigateToPage(settings ? "settings" : "convert");
+    private void NavigateToPage(string page)
     {
-        ConversionPage.Visibility = settings ? Visibility.Collapsed : Visibility.Visible;
-        SettingsPage.Visibility = settings ? Visibility.Visible : Visibility.Collapsed;
-        if (settings) UpdateSettingsLayout();
-        TaskFooter.Visibility = settings ? Visibility.Collapsed : Visibility.Visible;
-        Root.RowDefinitions[3].Height = new GridLength(settings ? 0 : 86);
-        var selected = settings ? Navigation.SettingsItem : ConvertNav;
+        ConversionPage.Visibility = page == "convert" ? Visibility.Visible : Visibility.Collapsed;
+        SettingsPage.Visibility = page == "settings" ? Visibility.Visible : Visibility.Collapsed;
+        FilesPage.Visibility = page == "files" ? Visibility.Visible : Visibility.Collapsed;
+        TasksPage.Visibility = page == "tasks" ? Visibility.Visible : Visibility.Collapsed;
+        HelpPage.Visibility = page == "help" ? Visibility.Visible : Visibility.Collapsed;
+        if (page == "settings") UpdateSettingsLayout();
+        TaskFooter.Visibility = page == "convert" ? Visibility.Visible : Visibility.Collapsed;
+        Root.RowDefinitions[2].Height = new GridLength(page == "convert" ? 86 : 0);
+        object selected = page switch { "settings" => Navigation.SettingsItem, "files" => MenuFilesNav, "tasks" => MenuTasksNav, "help" => MenuHelpNav, _ => ConvertNav };
         if (!ReferenceEquals(Navigation.SelectedItem, selected)) Navigation.SelectedItem = selected;
     }
     private void ShowSettings_Click(object sender, RoutedEventArgs e) => NavigateTo(true);
@@ -121,8 +143,6 @@ public sealed partial class MainWindow
         if (await dialog.ShowAsync() == ContentDialogResult.Primary)
         { preferences = new(); ApplySettings(); SaveSettings(); }
     }
-    private async void Help_Click(object sender, RoutedEventArgs e) => await ShowErrorAsync("使用说明",
-        "1. 添加或拖入文件／文件夹。\n2. 选中队列项查看预览。\n3. 在右侧选择本次压缩方式，点击开始转换。\n\n设置页可更改默认输出目录、默认压缩、子文件夹扫描与缩略图等偏好。\n\n文件菜单：添加文件、添加文件夹、打开输出目录。\n任务菜单：移除选中、移除完成项、重试失败项、清空队列。\nCtrl+O 添加文件；Ctrl+Shift+O 添加文件夹；F1 打开说明。\n\n原文件始终保留。图片输出 JPG，视频输出 MP4。文件大小和色彩请以试转结果为准。");
-    private async void About_Click(object sender, RoutedEventArgs e) => await ShowErrorAsync("轻转 2.2.1",
-        "iPhone 图片与视频转换工具\n\nC# · WinUI 3 · 本地处理\n支持 HEIC / HEIF / JPG / PNG / MOV / MP4\n\n照片卡片与导出箭头构成应用图标。\n逐显示器 DPI 感知让文字在高分屏上保持清晰。\n\n第三方组件许可见程序目录 licenses 文件夹。");
+    private void Help_Click(object sender, RoutedEventArgs e) => NavigateToPage("help");
+    private void About_Click(object sender, RoutedEventArgs e) => NavigateToPage("help");
 }

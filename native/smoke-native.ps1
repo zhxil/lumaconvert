@@ -1,7 +1,7 @@
 param([switch]$KeepOpen, [string]$Fixtures = '', [switch]$WheelTest, [switch]$ShowSettings)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$executable = Join-Path $projectRoot 'dist/轻转-v2.2.1-Windows-x64/LightConvert.exe'
+$executable = Join-Path $projectRoot 'dist/轻转-v2.3.0-Windows-x64/LightConvert.exe'
 $core = Get-Content (Join-Path $projectRoot '.tmp/latest-core-run.json') | ConvertFrom-Json
 $fixturePath = Join-Path $core.artifacts 'fixtures'
 if ($Fixtures) { $fixturePath = [IO.Path]::GetFullPath($Fixtures) }

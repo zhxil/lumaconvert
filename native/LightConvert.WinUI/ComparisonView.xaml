@@ -1,0 +1,45 @@
+<UserControl x:Class="LightConvert.WinUI.ComparisonView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <StackPanel Spacing="12">
+    <TextBlock x:Name="FileNameText" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+    <Grid ColumnSpacing="16">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="*" />
+      </Grid.ColumnDefinitions>
+      <TextBlock x:Name="BeforeText" Text="原片" Foreground="#58677D" FontSize="12" />
+      <TextBlock x:Name="AfterText" Grid.Column="1" Text="转换后" HorizontalAlignment="Right" Foreground="#285DD1" FontSize="12" />
+    </Grid>
+    <Border Background="#EDF0F5" CornerRadius="8">
+      <ScrollViewer x:Name="ZoomViewer" Height="380" ZoomMode="Enabled" MinZoomFactor="1" MaxZoomFactor="4" HorizontalScrollMode="Enabled" VerticalScrollMode="Enabled" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+        <Grid x:Name="Stage" Height="380" SizeChanged="Stage_SizeChanged">
+          <Image x:Name="AfterImage" Stretch="Uniform" AutomationProperties.Name="转换后画面" />
+          <Grid>
+            <Grid.Clip>
+              <RectangleGeometry x:Name="BeforeClip" />
+            </Grid.Clip>
+            <Image x:Name="BeforeImage" Stretch="Uniform" AutomationProperties.Name="原始画面" />
+          </Grid>
+          <Border x:Name="Divider" Width="2" Background="White" HorizontalAlignment="Left" IsHitTestVisible="False" />
+          <ProgressRing x:Name="LoadingRing" Width="32" Height="32" IsActive="True" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Grid>
+      </ScrollViewer>
+    </Border>
+    <Slider x:Name="SplitSlider" Minimum="0" Maximum="100" Value="50" ValueChanged="Split_Changed" AutomationProperties.Name="对比分隔线，左侧原片，右侧转换后" ToolTipService.ToolTip="拖动对比分隔线；画面为最长边 1536 像素的预览" />
+    <Grid>
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <StackPanel x:Name="VideoControls" Visibility="Collapsed" Spacing="4" Margin="0,0,16,0">
+        <TextBlock x:Name="TimeText" FontSize="12" Foreground="#58677D" />
+        <Slider x:Name="TimeSlider" Minimum="0" ValueChanged="Time_Changed" AutomationProperties.Name="视频对比时间点" />
+      </StackPanel>
+      <ComboBox x:Name="ZoomBox" Grid.Column="1" SelectedIndex="0" SelectionChanged="Zoom_Changed" VerticalAlignment="Bottom" AutomationProperties.Name="对比放大倍数">
+        <ComboBoxItem Content="适应" />
+        <ComboBoxItem Content="2×" />
+        <ComboBoxItem Content="4×" />
+      </ComboBox>
+    </Grid>
+    <InfoBar x:Name="ErrorBar" Severity="Error" IsClosable="False" IsOpen="False" />
+  </StackPanel>
+</UserControl>

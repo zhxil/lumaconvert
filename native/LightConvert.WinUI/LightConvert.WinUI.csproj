@@ -11,7 +11,7 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AssemblyName>LightConvert</AssemblyName>
-    <Version>2.2.1</Version>
+    <Version>2.3.0</Version>
     <PublishTrimmed>true</PublishTrimmed>
     <TrimMode>partial</TrimMode>
     <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>

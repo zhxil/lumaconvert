@@ -5,8 +5,10 @@ using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace LightConvert.WinUI;
 
-public sealed class QueueItem(string path) : INotifyPropertyChanged
+public sealed class QueueItem(string path, string? importedFolder = null) : INotifyPropertyChanged
 {
+    public string? ImportedFolder { get; } = importedFolder;
+    public string FolderLabel => ImportedFolder is null ? Description : Path.Combine(Path.GetFileName(Path.TrimEndingDirectorySeparator(ImportedFolder)), Path.GetRelativePath(ImportedFolder, Source));
     public string Source { get; } = path;
     public string Name => Path.GetFileName(Source);
     public long InputBytes { get; } = new FileInfo(path).Length;

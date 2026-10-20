@@ -40,6 +40,8 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         FileList.ItemsSource = items;
+        LibraryList.ItemsSource = items;
+        TaskList.ItemsSource = items;
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(TitleBar);
         var appWindow = AppWindow.GetFromWindowId(Win32Interop.GetWindowIdFromWindow(Handle));
@@ -120,9 +122,9 @@ public sealed partial class MainWindow : Window
             bool recursive = preferences.RecursiveFolders;
             var discovered = await Task.Run(() =>
             {
-                var found = new List<string>();
+                var found = new List<(string Source, string? Root)>();
                 var warnings = new List<string>();
-                void Visit(string path)
+                void Visit(string path, string? importRoot)
                 {
                     lifetime.Token.ThrowIfCancellationRequested();
                     try
@@ -130,28 +132,29 @@ public sealed partial class MainWindow : Window
                         path = Path.GetFullPath(path);
                         if (File.Exists(path))
                         {
-                            if (MediaConverter.Extensions.Contains(Path.GetExtension(path))) found.Add(path);
+                            if (MediaConverter.Extensions.Contains(Path.GetExtension(path))) found.Add((path, importRoot));
                             return;
                         }
                         if (!Directory.Exists(path)) return;
                         if (string.Equals(path.TrimEnd(Path.DirectorySeparatorChar), output.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase)) return;
                         if ((File.GetAttributes(path) & System.IO.FileAttributes.ReparsePoint) != 0) return;
                         foreach (var entry in Directory.EnumerateFileSystemEntries(path))
-                            if (recursive || File.Exists(entry)) Visit(entry);
+                            if (recursive || File.Exists(entry)) Visit(entry, importRoot);
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { warnings.Add(Path.GetFileName(path)); }
                 }
-                foreach (var path in inputs) Visit(path);
+                foreach (var path in inputs) Visit(path, Directory.Exists(path) ? Path.GetFullPath(path) : null);
                 return (found, warnings);
             }, lifetime.Token);
             var known = items.Select(i => i.Source).ToHashSet(StringComparer.OrdinalIgnoreCase);
             int added = 0;
-            foreach (var path in discovered.found)
+            foreach (var found in discovered.found)
             {
+                var path = found.Source;
                 if (!known.Add(path)) continue;
                 try
                 {
-                    var item = new QueueItem(path);
+                    var item = new QueueItem(path, found.Root);
                     items.Add(item);
                     added++;
                 }
@@ -267,6 +270,9 @@ public sealed partial class MainWindow : Window
     private void FileList_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdatePreview(FileList.SelectedItem as QueueItem);
     private void UpdatePreview(QueueItem? item)
     {
+        CompareButton.IsEnabled = item?.OutputPath is not null;
+        CompareSummary.Text = item?.Result ?? "";
+        UpdateOutputStructure();
         if (!ReferenceEquals(previewItem, item) || !preferences.ShowThumbnails)
         {
             previewCancellation?.Cancel(); previewCancellation?.Dispose();
@@ -347,8 +353,11 @@ public sealed partial class MainWindow : Window
                 if (token.IsCancellationRequested) break;
                 var item = pending[index];
                 item.Percent = 0; item.Result = ""; item.Error = null;
-                FileList.SelectedItem = item;
-                FileList.ScrollIntoView(item);
+                if (ConversionPage.Visibility == Visibility.Visible)
+                {
+                    FileList.SelectedItem = item;
+                    FileList.ScrollIntoView(item);
+                }
                 int currentIndex = index;
                 SummaryText.Text = $"正在转换 {index + 1} / {pending.Length} · {item.Name}";
                 var progress = new DispatchProgress(value =>
@@ -360,8 +369,10 @@ public sealed partial class MainWindow : Window
                 }, DispatcherQueue);
                 try
                 {
-                    var result = await converter.ConvertAsync(item.Source, folder, preset, progress, token);
+                    var destination = OutputLayout.Folder(folder, item.Source, item.ImportedFolder, preferences.PreserveFolderStructure);
+                    var result = await converter.ConvertAsync(item.Source, destination, preset, progress, token, preferences.PreserveCaptureTime);
                     item.OutputPath = result.OutputPath; item.Percent = 100; item.Status = "转换完成";
+                    if (ReferenceEquals(FileList.SelectedItem, item)) UpdatePreview(item);
                     double delta = result.InputBytes == 0 ? 0 : (1 - (double)result.OutputBytes / result.InputBytes) * 100;
                     item.Result = $"{MediaConverter.FormatSize(result.OutputBytes)} · {(delta >= 0 ? "减小" : "增大")} {Math.Abs(delta):0}%";
                     succeeded++; before += result.InputBytes; after += result.OutputBytes;

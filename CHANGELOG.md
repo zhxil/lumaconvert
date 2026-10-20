@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.3.0
+
+- Add photo wipe comparison with a draggable divider and shared zoom; video frames share a selectable timestamp.
+- Preserve photo capture dates, timezone and subsecond tags, and video creation time. Missing capture metadata falls back to original file times.
+- Preserve imported folder roots and nested paths, with flat output available in settings.
+- Move file management, tasks and help into actual NavigationView pages; retain native selection and settings at the bottom.
+- Extend core checks to 31 cases covering metadata, folder structure and comparison frames.
+
+
 ## 2.2.1
 
 - Fix settings content drifting to the right as the window grows.
