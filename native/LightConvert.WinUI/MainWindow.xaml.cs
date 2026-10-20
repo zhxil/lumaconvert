@@ -249,6 +249,7 @@ public sealed partial class MainWindow : Window
         MenuAddFiles.IsEnabled = MenuAddFolder.IsEnabled = MenuClear.IsEnabled = MenuRemove.IsEnabled = MenuRemoveCompleted.IsEnabled = MenuRetry.IsEnabled = editable;
         OutputBox.IsEnabled = ChooseFolderButton.IsEnabled = editable;
         SessionPresetBox.IsEnabled = DefaultPresetBox.IsEnabled = RecursiveToggle.IsEnabled = ThumbnailsToggle.IsEnabled = AutoOpenToggle.IsEnabled = ConfirmCloseToggle.IsEnabled = editable;
+        CaptureTimeToggle.IsEnabled = FolderStructureToggle.IsEnabled = editable;
         SettingsBody.IsHitTestVisible = editable;
         StartButton.IsEnabled = editable && items.Any(i => !i.Completed);
         CancelButton.IsEnabled = busy && conversionCancellation?.IsCancellationRequested == false;
